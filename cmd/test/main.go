@@ -55,7 +55,7 @@ func main() {
 	// 	fmt.Println(card.Name, card.Power, record.CreatedAt, record.ModifiedAt, record.AccessedAt, record.Writes, record.Reads)
 	// }
 
-	for i, r := range db.RecordsModifiedSince(time.Now().Add(7 * -time.Minute)) {
+	for i, r := range db.ModifiedSince(time.Now().Add(7 * -time.Minute)) {
 		slog.Info("Modified since", "record", r.ModifiedAt, "index", i)
 	}
 

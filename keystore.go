@@ -5,37 +5,23 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
-	"reflect"
 	"time"
 )
 
 // Collection is a key-value store
 type Collection[K comparable, T any] struct {
-	// Keys is a map of keys to records
-	Keys map[K]Record[T]
-	// Description is a human-readable description of the collection
-	Description string
+	Keys        map[K]Record[T] // Keys is a map of keys to records
+	Description string          // Description is a human-readable description of the collection
 }
 
 // Record is a key-value store record
 type Record[T any] struct {
-	// Value is anything worth storing
-	Value T
-
-	// ContentType is string representation of the type of Value
-	ContentType string
-
-	// CreatedAt is the time the record was created
-	CreatedAt time.Time
-	// ModifiedAt is the time the record was last modified
-	ModifiedAt time.Time
-	// AccessedAt is the time the record was last accessed
-	AccessedAt time.Time
-
-	// Writes is the number of times the record was written
-	Writes int
-	// Reads is the number of times the record was read
-	Reads int
+	Value      T         // Value is anything worth storing
+	CreatedAt  time.Time // CreatedAt is the time the record was created
+	ModifiedAt time.Time // ModifiedAt is the time the record was last modified
+	AccessedAt time.Time // AccessedAt is the time the record was last accessed
+	Writes     int       // Writes is the number of times the record was written
+	Reads      int       // Reads is the number of times the record was read
 }
 
 // NewRecord creates a new record with a value, content type, and description
@@ -44,13 +30,12 @@ type Record[T any] struct {
 func NewRecord[T any](value T) Record[T] {
 	now := time.Now()
 	return Record[T]{
-		Value:       value,
-		ContentType: reflect.TypeOf(value).String(),
-		CreatedAt:   now,
-		ModifiedAt:  now,
-		AccessedAt:  now,
-		Writes:      0,
-		Reads:       0,
+		Value:      value,
+		CreatedAt:  now,
+		ModifiedAt: now,
+		AccessedAt: now,
+		Writes:     0,
+		Reads:      0,
 	}
 }
 
@@ -125,7 +110,7 @@ func (c *Collection[K, T]) Delete(key K) {
 // Clear the collection
 //
 // ex: db.Clear()
-func (c Collection[K, T]) Clear() {
+func (c *Collection[K, T]) Clear() {
 	//slog.Info("Clearing collection")
 	clear(c.Keys)
 }
@@ -133,25 +118,15 @@ func (c Collection[K, T]) Clear() {
 // Len returns the number of records in the collection
 //
 // ex: size := db.Len()
-func (c Collection[K, T]) Len() int {
+func (c *Collection[K, T]) Len() int {
 	//slog.Info("Getting collection size", "len", len(c.Keys))
 	return len(c.Keys)
 }
 
-// // All returns a sequence of all records in the collection
-// //
-// // ex: for record := range db.All() { ... }
-// func (c Collection[K, T]) All() iter.Seq[T] {
-// 	return func(yield func(T) bool) {
-// 		for _, record := range c.Keys {
-// 			if !yield(record) {
-// 				return
-// 			}
-// 		}
-// 	}
-// }
-
-func (c Collection[K, T]) Save(fileName string) error {
+// Save the collection to a file
+//
+// ex: err := db.Save("db.gob")
+func (c *Collection[K, T]) Save(fileName string) error {
 	slog.Info("Saving collection")
 
 	file, err := os.Create(fileName)
@@ -169,7 +144,10 @@ func (c Collection[K, T]) Save(fileName string) error {
 	return nil
 }
 
-func (c Collection[K, T]) Load(fileName string) error {
+// Load the collection from a file
+//
+// ex: err := db.Load("db.gob")
+func (c *Collection[K, T]) Load(fileName string) error {
 	slog.Info("Loading collection")
 
 	file, err := os.Open(fileName)
@@ -188,7 +166,10 @@ func (c Collection[K, T]) Load(fileName string) error {
 
 }
 
-func (c Collection[K, T]) RecordsCreatedSince(time time.Time) []Record[T] {
+// CreatedSince returns all records created since a given time
+//
+// ex: records := db.CreatedSince(time.Now().Add(-24 * time.Hour))
+func (c *Collection[K, T]) CreatedSince(time time.Time) []Record[T] {
 	var records []Record[T]
 	for _, record := range c.Keys {
 		if record.CreatedAt.After(time) {
@@ -198,7 +179,10 @@ func (c Collection[K, T]) RecordsCreatedSince(time time.Time) []Record[T] {
 	return records
 }
 
-func (c Collection[K, T]) RecordsModifiedSince(time time.Time) []Record[T] {
+// ModifiedSince returns all records modified since a given time
+//
+// ex: records := db.ModifiedSince(time.Now().Add(-24 * time.Hour))
+func (c *Collection[K, T]) ModifiedSince(time time.Time) []Record[T] {
 	var records []Record[T]
 	for _, record := range c.Keys {
 		if record.ModifiedAt.After(time) {
@@ -208,7 +192,10 @@ func (c Collection[K, T]) RecordsModifiedSince(time time.Time) []Record[T] {
 	return records
 }
 
-func (c Collection[K, T]) RecordsAccessedSince(time time.Time) []Record[T] {
+// AccessedSince returns all records accessed since a given time
+//
+// ex: records := db.AccessedSince(time.Now().Add(-24 * time.Hour))
+func (c *Collection[K, T]) AccessedSince(time time.Time) []Record[T] {
 	var records []Record[T]
 	for _, record := range c.Keys {
 		if record.AccessedAt.After(time) {
