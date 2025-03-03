@@ -1,6 +1,10 @@
 package keystore
 
 import (
+	"encoding/gob"
+	"fmt"
+	"log/slog"
+	"os"
 	"reflect"
 	"time"
 )
@@ -146,3 +150,70 @@ func (c Collection[K, T]) Len() int {
 // 		}
 // 	}
 // }
+
+func (c Collection[K, T]) Save(fileName string) error {
+	slog.Info("Saving collection")
+
+	file, err := os.Create(fileName)
+	if err != nil {
+		return fmt.Errorf("error creating file: %w", err)
+	}
+
+	defer file.Close()
+
+	enc := gob.NewEncoder(file)
+	err = enc.Encode(c)
+	if err != nil {
+		return fmt.Errorf("error encoding collection: %w", err)
+	}
+	return nil
+}
+
+func (c Collection[K, T]) Load(fileName string) error {
+	slog.Info("Loading collection")
+
+	file, err := os.Open(fileName)
+	if err != nil {
+		return fmt.Errorf("error opening file: %w", err)
+	}
+
+	defer file.Close()
+
+	dec := gob.NewDecoder(file)
+	err = dec.Decode(&c)
+	if err != nil {
+		return fmt.Errorf("error decoding collection: %w", err)
+	}
+	return nil
+
+}
+
+func (c Collection[K, T]) RecordsCreatedSince(time time.Time) []Record[T] {
+	var records []Record[T]
+	for _, record := range c.Keys {
+		if record.CreatedAt.After(time) {
+			records = append(records, record)
+		}
+	}
+	return records
+}
+
+func (c Collection[K, T]) RecordsModifiedSince(time time.Time) []Record[T] {
+	var records []Record[T]
+	for _, record := range c.Keys {
+		if record.ModifiedAt.After(time) {
+			records = append(records, record)
+		}
+	}
+	return records
+}
+
+func (c Collection[K, T]) RecordsAccessedSince(time time.Time) []Record[T] {
+	var records []Record[T]
+	for _, record := range c.Keys {
+		if record.AccessedAt.After(time) {
+			records = append(records, record)
+		}
+	}
+	return records
+}
