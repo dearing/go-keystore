@@ -1,27 +1,39 @@
 package keystore
 
 import (
+	"math"
 	"time"
 )
 
+// Collection is a key-value store
 type Collection struct {
-	Keys        map[any]Record
+	// Keys is a map of keys to records
+	Keys map[any]Record
+	// Description is a human-readable description of the collection
 	Description string
 }
 
+// Record is a key-value store record
 type Record struct {
+	// Value is anything worth storing
 	Value any
 
+	// ContentType is string representation of the type of Value
 	ContentType string
+	// Description is a human-readable description of the record
 	Description string
 
-	CreatedAt  time.Time
+	// CreatedAt is the time the record was created
+	CreatedAt time.Time
+	// ModifiedAt is the time the record was last modified
 	ModifiedAt time.Time
+	// AccessedAt is the time the record was last accessed
 	AccessedAt time.Time
-	ExpiresAt  time.Time
 
+	// Writes is the number of times the record was written
 	Writes int
-	Reads  int
+	// Reads is the number of times the record was read
+	Reads int
 }
 
 // NewCollection creates a new collection with a description
@@ -41,6 +53,9 @@ func (c *Collection) Create(key any, value Record) {
 	value.CreatedAt = time.Now()
 	value.ModifiedAt = time.Now()
 	value.AccessedAt = time.Now()
+	if value.Writes >= math.MaxInt {
+		value.Writes = 0 // reset Writes to 0 if it reaches the maximum
+	}
 	value.Writes++
 	c.Keys[key] = value
 }
@@ -51,6 +66,9 @@ func (c *Collection) Create(key any, value Record) {
 func (c *Collection) Read(key any) (bool, Record) {
 	if record, ok := c.Keys[key]; ok {
 		record.AccessedAt = time.Now()
+		if record.Reads >= math.MaxInt {
+			record.Reads = 0 // reset Reads to 0 if it reaches the maximum
+		}
 		record.Reads++
 		return true, record
 	}
@@ -65,6 +83,9 @@ func (c *Collection) Update(key any, value Record) bool {
 	if _, ok := c.Keys[key]; ok {
 		value.ModifiedAt = time.Now()
 		value.AccessedAt = time.Now()
+		if value.Writes >= math.MaxInt {
+			value.Writes = 0 // reset Writes to 0 if it reaches the maximum
+		}
 		value.Writes++
 		c.Keys[key] = value
 		return true

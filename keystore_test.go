@@ -1,6 +1,7 @@
 package keystore
 
 import (
+	"math"
 	"testing"
 )
 
@@ -111,6 +112,51 @@ func TestNewCollectionComplex(t *testing.T) {
 
 	if record.Value.(*player).Password != "password" {
 		t.Errorf("expected %s, got %s", "password", record.Value.(*player).Password)
+	}
+
+}
+
+func TestNewCollectionOverFlow(t *testing.T) {
+	db := NewCollection("stars")
+	star := &Record{
+		Value:  "Sun",
+		Reads:  math.MaxInt,
+		Writes: math.MaxInt,
+	}
+
+	db.Create("Sun", *star)
+
+	ok, record := db.Read("Sun")
+	if !ok {
+		t.Errorf("expected %t, got %t", true, ok)
+	}
+
+	if record.Reads != 1 {
+		t.Errorf("expected %d, got %d", 0, record.Reads)
+	}
+
+	if record.Writes != 1 {
+		t.Errorf("expected %d, got %d", 1, record.Writes)
+	}
+
+	record.Reads = math.MaxInt
+	record.Writes = math.MaxInt
+
+	if db.Update("Sun", record); !ok {
+		t.Errorf("expected %t, got %t", false, ok)
+	}
+
+	ok, record = db.Read("Sun")
+	if !ok {
+		t.Errorf("expected %t, got %t", true, ok)
+	}
+
+	if record.Reads != 1 {
+		t.Errorf("expected %d, got %d", 0, record.Reads)
+	}
+
+	if record.Writes != 1 {
+		t.Errorf("expected %d, got %d", 1, record.Writes)
 	}
 
 }
