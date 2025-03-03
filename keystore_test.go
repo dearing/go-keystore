@@ -1,162 +1,201 @@
 package keystore
 
 import (
-	"math"
 	"testing"
 )
 
 func TestNewCollectionString(t *testing.T) {
-	db := NewCollection("my MTG cards")
+
+	card1 := "Black Lotus"
+	card2 := "Mox Pearl"
+
+	db := NewCollection[string, string]("my MTG cards")
+
+	// did the description get set?
 	if db.Description != "my MTG cards" {
 		t.Errorf("expected %s, got %s", "my MTG cards", db.Description)
 	}
 
+	// database should be empty
 	if len(db.Keys) != 0 {
 		t.Errorf("expected %d, got %d", 0, len(db.Keys))
 	}
 
-	card := Record{Value: "Black Lotus"}
-	db.Create("Black Lotus", card)
+	// create a record
+	db.Set("c1", card1)
 
+	// database should have 1 record
 	if len(db.Keys) != 1 {
 		t.Errorf("expected %d, got %d", 1, len(db.Keys))
 	}
 
-	ok, record := db.Read("Black Lotus")
+	record, ok := db.Get("c1")
+
+	// did we get the record back?
 	if !ok {
 		t.Errorf("expected %t, got %t", true, ok)
 	}
 
-	if record.Value != "Black Lotus" {
-		t.Errorf("expected %s, got %s", "Black Lotus", record.Value)
+	// did we get the right record back?
+	if record != card1 {
+		t.Errorf("expected %s, got %s", card1, record)
 	}
 
-	if record.Reads != 1 {
-		t.Errorf("expected %d, got %d", 1, record.Reads)
-	}
-
-	if record.Writes != 1 {
-		t.Errorf("expected %d, got %d", 1, record.Writes)
-	}
-
-	if record.CreatedAt.IsZero() {
-		t.Errorf("expected %s, got %s", "not zero", record.CreatedAt)
-	}
-
-	if record.ModifiedAt.IsZero() {
-		t.Errorf("expected %s, got %s", "not zero", record.ModifiedAt)
-	}
-
-	if record.AccessedAt.IsZero() {
-		t.Errorf("expected %s, got %s", "not zero", record.AccessedAt)
-	}
-
-	ok, record = db.Read("Black Lotus")
-	if !ok {
-		t.Errorf("expected %t, got %t", true, ok)
-	}
-
-	if record.Reads != 1 {
-		t.Errorf("expected %d, got %d", 1, record.Reads)
-	}
-
-	if record.Writes != 1 {
-		t.Errorf("expected %d, got %d", 1, record.Writes)
-	}
-
-	if record.CreatedAt.IsZero() {
-		t.Errorf("expected %s, got %s", "not zero", record.CreatedAt)
-	}
-
-	if record.ModifiedAt.IsZero() {
-		t.Errorf("expected %s, got %s", "not zero", record.ModifiedAt)
-	}
-
-	if record.AccessedAt.IsZero() {
-		t.Errorf("expected %s, got %s", "not zero", record.AccessedAt)
-	}
-
-	cardName := "Blacker Lotus"
-
-	ok = db.Update("Black Lotus", Record{Value: cardName})
-	if !ok {
-		t.Errorf("expected %t, got %t", true, ok)
-	}
-
-	ok, record = db.Read("Black Lotus")
+	// attempt to get a non-existent record
+	record, ok = db.Get("should not exist")
 	if ok {
-		if record.Value != cardName {
-			t.Errorf("expected %s, got %s", cardName, record.Value)
-		}
-	}
-}
-
-func TestNewCollectionComplex(t *testing.T) {
-	db := NewCollection("players")
-	type player struct {
-		Username string
-		Password string
-	}
-
-	alice := &player{Username: "alice", Password: "password"}
-	db.Create("alice", Record{Value: alice})
-
-	ok, record := db.Read("alice")
-	if !ok {
-		t.Errorf("expected %t, got %t", true, ok)
-	}
-
-	if record.Value.(*player).Username != "alice" {
-		t.Errorf("expected %s, got %s", "alice", record.Value.(*player).Username)
-	}
-
-	if record.Value.(*player).Password != "password" {
-		t.Errorf("expected %s, got %s", "password", record.Value.(*player).Password)
-	}
-
-}
-
-func TestNewCollectionOverFlow(t *testing.T) {
-	db := NewCollection("stars")
-	star := &Record{
-		Value:  "Sun",
-		Reads:  math.MaxInt,
-		Writes: math.MaxInt,
-	}
-
-	db.Create("Sun", *star)
-
-	ok, record := db.Read("Sun")
-	if !ok {
-		t.Errorf("expected %t, got %t", true, ok)
-	}
-
-	if record.Reads != 1 {
-		t.Errorf("expected %d, got %d", 0, record.Reads)
-	}
-
-	if record.Writes != 1 {
-		t.Errorf("expected %d, got %d", 1, record.Writes)
-	}
-
-	record.Reads = math.MaxInt
-	record.Writes = math.MaxInt
-
-	if db.Update("Sun", record); !ok {
 		t.Errorf("expected %t, got %t", false, ok)
 	}
 
-	ok, record = db.Read("Sun")
+	// we should have an empty record on no match
+	if record != "" {
+		t.Errorf("expected %s, got %s", "", record)
+	}
+
+	// get a full record
+	fullRecord, ok := db.GetRecord("c1")
 	if !ok {
 		t.Errorf("expected %t, got %t", true, ok)
 	}
 
-	if record.Reads != 1 {
-		t.Errorf("expected %d, got %d", 0, record.Reads)
+	// did we get the right record back?
+	if fullRecord.Value != card1 {
+		t.Errorf("expected %s, got %s", card1, fullRecord.Value)
 	}
 
-	if record.Writes != 1 {
-		t.Errorf("expected %d, got %d", 1, record.Writes)
+	// writes should be zero because it was a new record and not re-set
+	if fullRecord.Writes != 0 {
+		t.Errorf("expected %d, got %d", 1, fullRecord.Writes)
 	}
+
+	db.Set("c1", "Black Lotus (reprint)")
+
+	// get a full record
+	fullRecord, ok = db.GetRecord("c1")
+	if !ok {
+		t.Errorf("expected %t, got %t", true, ok)
+	}
+
+	// created should be set
+	if fullRecord.CreatedAt.IsZero() {
+		t.Errorf("expected %t, got %t", false, fullRecord.CreatedAt.IsZero())
+	}
+
+	// modified should be set
+	if fullRecord.ModifiedAt.IsZero() {
+		t.Errorf("expected %t, got %t", false, fullRecord.ModifiedAt.IsZero())
+	}
+
+	// accessed should be set
+	if fullRecord.AccessedAt.IsZero() {
+		t.Errorf("expected %t, got %t", false, fullRecord.AccessedAt.IsZero())
+	}
+
+	// create a new record
+	db.Set("c2", card2)
+
+	// database should have 2 records
+	if len(db.Keys) != 2 {
+		t.Errorf("expected %d, got %d", 2, len(db.Keys))
+	}
+
+	// delete a record
+	db.Delete("c2")
+
+	// database should have 1 record
+	if len(db.Keys) != 1 {
+		t.Errorf("expected %d, got %d", 1, len(db.Keys))
+	}
+
+	// attempt to get a deleted record
+	record, ok = db.Get("c2")
+	if ok {
+		t.Errorf("expected %t, got %t", false, ok)
+	}
+
+	// we should have an empty record on no match
+	if record != "" {
+		t.Errorf("expected %s, got %s", "", record)
+	}
+
+	// clear the database
+	db.Clear()
+
+	// database should be empty
+	if len(db.Keys) != 0 {
+		t.Errorf("expected %d, got %d", 0, len(db.Keys))
+	}
+
+	db.Set("c1", card1)
+
+	// database should have 1 record
+	if len(db.Keys) != 1 {
+		t.Errorf("expected %d, got %d", 1, len(db.Keys))
+	}
+
+}
+
+// benchmark the Set method
+func BenchmarkSetString(b *testing.B) {
+
+	type Card struct {
+		Name      string
+		ManaCost  string
+		Type      string
+		SubType   string
+		Power     int
+		Toughness int
+	}
+	card := Card{
+		Name:      "Black Lotus",
+		ManaCost:  "0",
+		Type:      "Artifact",
+		SubType:   "Lotus",
+		Power:     0,
+		Toughness: 0,
+	}
+
+	db := NewCollection[string, Card]("my MTG cards")
+
+	for b.Loop() {
+		name := "Black Lotus"
+		db.Set(name, card)
+		_, _ = db.Get(name)
+		db.Delete(name)
+	}
+
+	db.Clear()
+
+}
+
+func BenchmarkSetInt(b *testing.B) {
+
+	type Card struct {
+		Name      string
+		ManaCost  string
+		Type      string
+		SubType   string
+		Power     int
+		Toughness int
+	}
+	card := Card{
+		Name:      "Black Lotus",
+		ManaCost:  "0",
+		Type:      "Artifact",
+		SubType:   "Lotus",
+		Power:     0,
+		Toughness: 0,
+	}
+
+	db := NewCollection[int, Card]("my MTG cards")
+
+	for b.Loop() {
+		name := 0
+		db.Set(name, card)
+		_, _ = db.Get(name)
+		db.Delete(name)
+	}
+
+	db.Clear()
 
 }

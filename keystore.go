@@ -1,27 +1,25 @@
 package keystore
 
 import (
-	"math"
+	"reflect"
 	"time"
 )
 
 // Collection is a key-value store
-type Collection struct {
+type Collection[K comparable, T any] struct {
 	// Keys is a map of keys to records
-	Keys map[any]Record
+	Keys map[K]Record[T]
 	// Description is a human-readable description of the collection
 	Description string
 }
 
 // Record is a key-value store record
-type Record struct {
+type Record[T any] struct {
 	// Value is anything worth storing
-	Value any
+	Value T
 
 	// ContentType is string representation of the type of Value
 	ContentType string
-	// Description is a human-readable description of the record
-	Description string
 
 	// CreatedAt is the time the record was created
 	CreatedAt time.Time
@@ -36,70 +34,115 @@ type Record struct {
 	Reads int
 }
 
+// NewRecord creates a new record with a value, content type, and description
+//
+// ex: record := NewRecord(mtgCard, "Card", "A powerful card")
+func NewRecord[T any](value T) Record[T] {
+	now := time.Now()
+	return Record[T]{
+		Value:       value,
+		ContentType: reflect.TypeOf(value).String(),
+		CreatedAt:   now,
+		ModifiedAt:  now,
+		AccessedAt:  now,
+		Writes:      0,
+		Reads:       0,
+	}
+}
+
 // NewCollection creates a new collection with a description
 //
 // ex: db := NewCollection("my MTG cards")
-func NewCollection(description string) *Collection {
-	return &Collection{
-		Keys:        make(map[any]Record),
+func NewCollection[K comparable, T any](description string) Collection[K, T] {
+	//slog.Info("Creating new collection", "description", description)
+	return Collection[K, T]{
+		Keys:        make(map[K]Record[T]),
 		Description: description,
 	}
 }
 
-// Create a new record in the collection
+// Set a record in the collection
 //
-// ex: db.Create("Black Lotus", Record{Value: "Black Lotus"})
-func (c *Collection) Create(key any, value Record) {
-	value.CreatedAt = time.Now()
-	value.ModifiedAt = time.Now()
-	value.AccessedAt = time.Now()
-	if value.Writes >= math.MaxInt {
-		value.Writes = 0 // reset Writes to 0 if it reaches the maximum
+// If the record already exists, it will be updated with write plus one,
+// if the record does not exist, it will be created with write at zero.
+//
+// ex: db.Set("Black Lotus", "Black Lotus")
+func (c *Collection[K, T]) Set(key K, value T) {
+	if record, exists := c.Keys[key]; exists {
+		record.Value = value
+		record.ModifiedAt = time.Now()
+		record.Writes++
+		c.Keys[key] = record
+		//slog.Info("Updating record", "value", value)
+	} else {
+		//slog.Info("Setting new record", "value", value)
+		c.Keys[key] = NewRecord(value)
 	}
-	value.Writes++
-	c.Keys[key] = value
 }
 
 // Read a record from the collection
 //
-// ex: record, ok := (db.Read("Black Lotus")) { ... }
-func (c *Collection) Read(key any) (bool, Record) {
-	if record, ok := c.Keys[key]; ok {
+// ex: record, ok := db.Read("Black Lotus")
+func (c *Collection[K, T]) Get(key K) (T, bool) {
+	//slog.Info("Reading value", "key", key)
+	if record, exists := c.Keys[key]; exists {
 		record.AccessedAt = time.Now()
-		if record.Reads >= math.MaxInt {
-			record.Reads = 0 // reset Reads to 0 if it reaches the maximum
-		}
 		record.Reads++
-		return true, record
+		c.Keys[key] = record
+		return record.Value, true
 	}
-	return false, Record{}
+
+	var zero T
+	return zero, false
 }
 
-// Update a record in the collection
-// returns true if the record was updated, false if the record does not exist
+// GetRecord retrieves the full record from the collection
 //
-// ex: if (db.Update("Black Lotus", Record{Value: "Blacker Lotus"})) { ... }
-func (c *Collection) Update(key any, value Record) bool {
-	if _, ok := c.Keys[key]; ok {
-		value.ModifiedAt = time.Now()
-		value.AccessedAt = time.Now()
-		if value.Writes >= math.MaxInt {
-			value.Writes = 0 // reset Writes to 0 if it reaches the maximum
-		}
-		value.Writes++
-		c.Keys[key] = value
-		return true
+// ex: record, ok := db.GetRecord("Black Lotus")
+func (c *Collection[K, T]) GetRecord(key K) (Record[T], bool) {
+	//slog.Info("Getting record", "key", key)
+	record, exists := c.Keys[key]
+	if exists {
+		record.AccessedAt = time.Now()
+		record.Reads++
+		c.Keys[key] = record
 	}
-	return false
+	return record, exists
 }
 
-// Delete a record from the collection
+// Delete removes a record from the collection
 //
 // ex: db.Delete("Black Lotus")
-func (c *Collection) Delete(key any) bool {
-	if _, ok := c.Keys[key]; ok {
-		delete(c.Keys, key)
-		return true
-	}
-	return false
+func (c *Collection[K, T]) Delete(key K) {
+	//slog.Info("Deleting record", "key", key)
+	delete(c.Keys, key)
 }
+
+// Clear the collection
+//
+// ex: db.Clear()
+func (c Collection[K, T]) Clear() {
+	//slog.Info("Clearing collection")
+	clear(c.Keys)
+}
+
+// Len returns the number of records in the collection
+//
+// ex: size := db.Len()
+func (c Collection[K, T]) Len() int {
+	//slog.Info("Getting collection size", "len", len(c.Keys))
+	return len(c.Keys)
+}
+
+// // All returns a sequence of all records in the collection
+// //
+// // ex: for record := range db.All() { ... }
+// func (c Collection[K, T]) All() iter.Seq[T] {
+// 	return func(yield func(T) bool) {
+// 		for _, record := range c.Keys {
+// 			if !yield(record) {
+// 				return
+// 			}
+// 		}
+// 	}
+// }
