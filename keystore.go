@@ -5,13 +5,14 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"regexp"
 	"time"
 )
 
 // Collection is a key-value store
-type Collection[K comparable, T any] struct {
-	Keys        map[K]Record[T] // Keys is a map of keys to records
-	Description string          // Description is a human-readable description of the collection
+type Collection[T any] struct {
+	Keys        map[string]Record[T] // Keys is a map of keys to records
+	Description string               // Description is a human-readable description of the collection
 }
 
 // Record is a key-value store record
@@ -42,10 +43,10 @@ func NewRecord[T any](value T) Record[T] {
 // NewCollection creates a new collection with a description
 //
 // ex: db := NewCollection("my MTG cards")
-func NewCollection[K comparable, T any](description string) Collection[K, T] {
+func NewCollection[T any](description string) Collection[T] {
 	//slog.Info("Creating new collection", "description", description)
-	return Collection[K, T]{
-		Keys:        make(map[K]Record[T]),
+	return Collection[T]{
+		Keys:        make(map[string]Record[T]),
 		Description: description,
 	}
 }
@@ -56,7 +57,7 @@ func NewCollection[K comparable, T any](description string) Collection[K, T] {
 // if the record does not exist, it will be created with write at zero.
 //
 // ex: db.Set("Black Lotus", "Black Lotus")
-func (c *Collection[K, T]) Set(key K, value T) {
+func (c *Collection[T]) Set(key string, value T) {
 	if record, exists := c.Keys[key]; exists {
 		record.Value = value
 		record.ModifiedAt = time.Now()
@@ -72,7 +73,7 @@ func (c *Collection[K, T]) Set(key K, value T) {
 // Read a record from the collection
 //
 // ex: record, ok := db.Read("Black Lotus")
-func (c *Collection[K, T]) Get(key K) (T, bool) {
+func (c *Collection[T]) Get(key string) (T, bool) {
 	//slog.Info("Reading value", "key", key)
 	if record, exists := c.Keys[key]; exists {
 		record.AccessedAt = time.Now()
@@ -88,7 +89,7 @@ func (c *Collection[K, T]) Get(key K) (T, bool) {
 // GetRecord retrieves the full record from the collection
 //
 // ex: record, ok := db.GetRecord("Black Lotus")
-func (c *Collection[K, T]) GetRecord(key K) (Record[T], bool) {
+func (c *Collection[T]) GetRecord(key string) (Record[T], bool) {
 	//slog.Info("Getting record", "key", key)
 	record, exists := c.Keys[key]
 	if exists {
@@ -102,7 +103,7 @@ func (c *Collection[K, T]) GetRecord(key K) (Record[T], bool) {
 // Delete removes a record from the collection
 //
 // ex: db.Delete("Black Lotus")
-func (c *Collection[K, T]) Delete(key K) {
+func (c *Collection[T]) Delete(key string) {
 	//slog.Info("Deleting record", "key", key)
 	delete(c.Keys, key)
 }
@@ -110,7 +111,7 @@ func (c *Collection[K, T]) Delete(key K) {
 // Clear the collection
 //
 // ex: db.Clear()
-func (c *Collection[K, T]) Clear() {
+func (c *Collection[T]) Clear() {
 	//slog.Info("Clearing collection")
 	clear(c.Keys)
 }
@@ -118,7 +119,7 @@ func (c *Collection[K, T]) Clear() {
 // Len returns the number of records in the collection
 //
 // ex: size := db.Len()
-func (c *Collection[K, T]) Len() int {
+func (c *Collection[T]) Len() int {
 	//slog.Info("Getting collection size", "len", len(c.Keys))
 	return len(c.Keys)
 }
@@ -126,7 +127,7 @@ func (c *Collection[K, T]) Len() int {
 // Save the collection to a file
 //
 // ex: err := db.Save("db.gob")
-func (c *Collection[K, T]) Save(fileName string) error {
+func (c *Collection[T]) Save(fileName string) error {
 	slog.Info("Saving collection")
 
 	file, err := os.Create(fileName)
@@ -147,7 +148,7 @@ func (c *Collection[K, T]) Save(fileName string) error {
 // Load the collection from a file
 //
 // ex: err := db.Load("db.gob")
-func (c *Collection[K, T]) Load(fileName string) error {
+func (c *Collection[T]) Load(fileName string) error {
 	slog.Info("Loading collection")
 
 	file, err := os.Open(fileName)
@@ -169,7 +170,7 @@ func (c *Collection[K, T]) Load(fileName string) error {
 // CreatedSince returns all records created since a given time
 //
 // ex: records := db.CreatedSince(time.Now().Add(-24 * time.Hour))
-func (c *Collection[K, T]) CreatedSince(time time.Time) []Record[T] {
+func (c *Collection[T]) CreatedSince(time time.Time) []Record[T] {
 	var records []Record[T]
 	for _, record := range c.Keys {
 		if record.CreatedAt.After(time) {
@@ -182,7 +183,7 @@ func (c *Collection[K, T]) CreatedSince(time time.Time) []Record[T] {
 // ModifiedSince returns all records modified since a given time
 //
 // ex: records := db.ModifiedSince(time.Now().Add(-24 * time.Hour))
-func (c *Collection[K, T]) ModifiedSince(time time.Time) []Record[T] {
+func (c *Collection[T]) ModifiedSince(time time.Time) []Record[T] {
 	var records []Record[T]
 	for _, record := range c.Keys {
 		if record.ModifiedAt.After(time) {
@@ -195,7 +196,7 @@ func (c *Collection[K, T]) ModifiedSince(time time.Time) []Record[T] {
 // AccessedSince returns all records accessed since a given time
 //
 // ex: records := db.AccessedSince(time.Now().Add(-24 * time.Hour))
-func (c *Collection[K, T]) AccessedSince(time time.Time) []Record[T] {
+func (c *Collection[T]) AccessedSince(time time.Time) []Record[T] {
 	var records []Record[T]
 	for _, record := range c.Keys {
 		if record.AccessedAt.After(time) {
@@ -203,4 +204,110 @@ func (c *Collection[K, T]) AccessedSince(time time.Time) []Record[T] {
 		}
 	}
 	return records
+}
+
+func (c *Collection[T]) String() string {
+	return fmt.Sprintf("Collection: %s", c.Description)
+}
+
+func (c *Collection[T]) MatchValues(pattern string) ([]T, error) {
+
+	var matches []T
+
+	regex, err := regexp.Compile(pattern)
+	if err != nil {
+		return nil, fmt.Errorf("error compiling regex: %w", err)
+	}
+
+	for key, record := range c.Keys {
+		if regex.MatchString(key) {
+			matches = append(matches, record.Value)
+		}
+	}
+
+	return matches, nil
+
+}
+
+func (c *Collection[T]) MatchKeys(pattern string) ([]string, error) {
+
+	var matches []string
+
+	regex, err := regexp.Compile(pattern)
+	if err != nil {
+		return nil, fmt.Errorf("error compiling regex: %w", err)
+	}
+
+	for key := range c.Keys {
+		if regex.MatchString(key) {
+			matches = append(matches, key)
+		}
+	}
+
+	return matches, nil
+
+}
+
+func (c *Collection[T]) Prefix(prefix string) ([]string, error) {
+
+	var matches []string
+
+	for key := range c.Keys {
+		if matchWildcard(key, prefix) {
+			matches = append(matches, key)
+		}
+	}
+
+	return matches, nil
+
+}
+
+func (c *Collection[T]) PrefixChan(prefix string) chan string {
+	out := make(chan string, 2)
+	go func() {
+		for key := range c.Keys {
+			if matchWildcard(key, prefix) {
+				out <- key
+			}
+		}
+		close(out)
+	}()
+
+	return out
+}
+
+func matchWildcard(key, pattern string) bool {
+	keyIndex := 0
+	patternIndex := 0
+
+	for keyIndex < len(key) || patternIndex < len(pattern) {
+		if patternIndex < len(pattern) {
+			if pattern[patternIndex] == '*' {
+				patternIndex++
+				for keyIndex < len(key) {
+					if matchWildcard(key[keyIndex:], pattern[patternIndex:]) {
+						return true
+					}
+					keyIndex++
+				}
+				return matchWildcard(key[keyIndex:], pattern[patternIndex:])
+			} else if pattern[patternIndex] == '?' {
+				if keyIndex >= len(key) {
+					return false
+				}
+				keyIndex++
+				patternIndex++
+			} else if keyIndex < len(key) && key[keyIndex] == pattern[patternIndex] {
+				keyIndex++
+				patternIndex++
+			} else {
+				return false
+			}
+		} else if keyIndex < len(key) {
+			return false
+		} else {
+			return true
+		}
+	}
+	return true
 }

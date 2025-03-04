@@ -9,7 +9,7 @@ func TestNewCollectionString(t *testing.T) {
 	card1 := "Black Lotus"
 	card2 := "Mox Pearl"
 
-	db := NewCollection[string, string]("my MTG cards")
+	db := NewCollection[string]("my MTG cards")
 
 	// did the description get set?
 	if db.Description != "my MTG cards" {
@@ -155,42 +155,10 @@ func BenchmarkSetString(b *testing.B) {
 		Toughness: 0,
 	}
 
-	db := NewCollection[string, Card]("my MTG cards")
+	db := NewCollection[Card]("my MTG cards")
 
 	for b.Loop() {
 		name := "Black Lotus"
-		db.Set(name, card)
-		_, _ = db.Get(name)
-		db.Delete(name)
-	}
-
-	db.Clear()
-
-}
-
-func BenchmarkSetInt(b *testing.B) {
-
-	type Card struct {
-		Name      string
-		ManaCost  string
-		Type      string
-		SubType   string
-		Power     int
-		Toughness int
-	}
-	card := Card{
-		Name:      "Black Lotus",
-		ManaCost:  "0",
-		Type:      "Artifact",
-		SubType:   "Lotus",
-		Power:     0,
-		Toughness: 0,
-	}
-
-	db := NewCollection[int, Card]("my MTG cards")
-
-	for b.Loop() {
-		name := 0
 		db.Set(name, card)
 		_, _ = db.Get(name)
 		db.Delete(name)
