@@ -5,10 +5,14 @@ import (
 	"regexp"
 )
 
+// String returns a string representation of the collection
 func (c *Collection[T]) String() string {
-	return fmt.Sprintf("Collection: %s", c.Description)
+	return fmt.Sprintf("Collection: '%s', size=%d", c.Description, c.Len())
 }
 
+// MatchValues returns a slice of values that match the given pattern
+//
+// ex: values, err := db.MatchValues("c[0-9]")
 func (c *Collection[T]) MatchValues(pattern string) ([]T, error) {
 
 	var matches []T
@@ -28,6 +32,9 @@ func (c *Collection[T]) MatchValues(pattern string) ([]T, error) {
 
 }
 
+// MatchKeys returns a slice of keys that match the given pattern
+//
+// ex: keys, err := db.MatchKeys("c[0-9]")
 func (c *Collection[T]) MatchKeys(pattern string) ([]string, error) {
 
 	var matches []string
@@ -47,6 +54,9 @@ func (c *Collection[T]) MatchKeys(pattern string) ([]string, error) {
 
 }
 
+// Prefix returns a slice of keys that match the given prefix
+//
+// ex: users, err := db.Prefix("user:")
 func (c *Collection[T]) Prefix(prefix string) ([]string, error) {
 
 	var matches []string
@@ -61,6 +71,9 @@ func (c *Collection[T]) Prefix(prefix string) ([]string, error) {
 
 }
 
+// PrefixChan returns a channel of keys that match the given prefix
+//
+// ex: for key := range db.PrefixChan("user:") {}
 func (c *Collection[T]) PrefixChan(prefix string) chan string {
 	out := make(chan string, 2)
 	go func() {
@@ -75,6 +88,10 @@ func (c *Collection[T]) PrefixChan(prefix string) chan string {
 	return out
 }
 
+// matchWildcard returns true if the key matches the pattern
+// Supported wildcards are '*' to match zero or more characters and '?' to match exactly one character.
+//
+// ex: matchWildcard("c1", "c*")
 func matchWildcard(key, pattern string) bool {
 	keyIndex := 0
 	patternIndex := 0
