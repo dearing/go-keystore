@@ -11,6 +11,7 @@ func (c *Collection[T]) String() string {
 }
 
 // MatchValues returns a slice of values that match the given pattern
+// The pattern is a regular expression, of which the syntax is described here: https://golang.org/pkg/regexp/
 //
 // ex: values, err := db.MatchValues("c[0-9]")
 func (c *Collection[T]) MatchValues(pattern string) ([]T, error) {
@@ -33,6 +34,7 @@ func (c *Collection[T]) MatchValues(pattern string) ([]T, error) {
 }
 
 // MatchKeys returns a slice of keys that match the given pattern
+// The pattern is a regular expression, of which the syntax is described here: https://golang.org/pkg/regexp/
 //
 // ex: keys, err := db.MatchKeys("c[0-9]")
 func (c *Collection[T]) MatchKeys(pattern string) ([]string, error) {
@@ -55,6 +57,7 @@ func (c *Collection[T]) MatchKeys(pattern string) ([]string, error) {
 }
 
 // Prefix returns a slice of keys that match the given prefix
+// Supported wildcards are '*' to match zero or more characters and '?' to match exactly one character.
 //
 // ex: users, err := db.Prefix("user:")
 func (c *Collection[T]) Prefix(prefix string) ([]string, error) {
@@ -72,6 +75,7 @@ func (c *Collection[T]) Prefix(prefix string) ([]string, error) {
 }
 
 // PrefixChan returns a channel of keys that match the given prefix
+// Supported wildcards are '*' to match zero or more characters and '?' to match exactly one character.
 //
 // ex: for key := range db.PrefixChan("user:") {}
 func (c *Collection[T]) PrefixChan(prefix string) chan string {
@@ -90,7 +94,7 @@ func (c *Collection[T]) PrefixChan(prefix string) chan string {
 
 // matchWildcard returns true if the key matches the pattern
 // Supported wildcards are '*' to match zero or more characters and '?' to match exactly one character.
-//
+// TODO: feels clunky, could be improved
 // ex: matchWildcard("c1", "c*")
 func matchWildcard(key, pattern string) bool {
 	keyIndex := 0
