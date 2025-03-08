@@ -50,6 +50,11 @@ func NewCollection[T any](description string) Collection[T] {
 	}
 }
 
+// String returns a string representation of the collection
+func (c *Collection[T]) String() string {
+	return fmt.Sprintf("Collection: '%s', size=%d", c.Description, c.Len())
+}
+
 // Set a record in the collection
 //
 // If the record already exists, it will be updated with write plus one,

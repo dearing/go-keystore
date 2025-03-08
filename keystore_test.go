@@ -96,6 +96,13 @@ func TestNewCollectionBasic(t *testing.T) {
 
 	db := NewCollection[string]("my MTG cards")
 
+	t.Logf("db: %s", db.String())
+
+	// String() should return `Collection: 'my MTG cards', size=0`
+	if db.String() == "" {
+		t.Errorf("expected string, not empty")
+	}
+
 	// did the description get set?
 	if db.Description != "my MTG cards" {
 		t.Errorf("expected %s, got %s", "my MTG cards", db.Description)
