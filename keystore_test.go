@@ -1,10 +1,95 @@
 package keystore
 
 import (
+	"bytes"
+	"errors"
 	"testing"
+	"time"
 )
 
-func TestNewCollectionString(t *testing.T) {
+// errorWriter is a simulated writer that always returns an error
+type errorWriter struct{}
+
+// Write always returns an error
+func (ew errorWriter) Write(p []byte) (n int, err error) {
+	return 0, errors.New("simulated write error")
+}
+
+func TestNewCollectionTimeGroups(t *testing.T) {
+	db := NewCollection[string]("my MTG cards")
+	db.Set("c1", "Black Lotus")
+
+	mark := time.Now()
+
+	db.Set("c2", "Mox Pearl")
+
+	if db.Len() != 2 {
+		t.Errorf("expected %d, got %d", 2, db.Len())
+	}
+
+	// should only get back the Mox Pearl record
+	for _, record := range db.CreatedSince(mark) {
+		if record != "Mox Pearl" {
+			t.Errorf("expected %s, got %s", "Mox Pearl", record)
+		}
+	}
+	// should only get back the Mox Pearl record
+	for _, record := range db.ModifiedSince(mark) {
+		if record != "Mox Pearl" {
+			t.Errorf("expected %s, got %s", "Mox Pearl", record)
+		}
+	}
+	// should only get back the Mox Pearl record
+	for _, record := range db.AccessedSince(mark) {
+		if record != "Mox Pearl" {
+			t.Errorf("expected %s, got %s", "Mox Pearl", record)
+		}
+	}
+
+}
+
+func TestNewCollectionPersist(t *testing.T) {
+	db := NewCollection[string]("my MTG cards")
+
+	if db.Len() != 0 {
+		t.Errorf("expected %d, got %d", 0, db.Len())
+	}
+
+	db.Set("c1", "Black Lotus")
+	db.Set("c2", "Mox Pearl")
+
+	dataStore := bytes.Buffer{}
+
+	err := db.Load(&dataStore)
+	if err == nil {
+		t.Errorf("encoding should throw and error on empty data store")
+	}
+
+	err = db.Save(&dataStore)
+	if err != nil {
+		t.Error(err)
+	}
+
+	db.Clear()
+
+	if db.Len() != 0 {
+		t.Errorf("expected %d, got %d", 0, db.Len())
+	}
+
+	err = db.Load(&dataStore)
+	if err != nil {
+		t.Error(err)
+	}
+
+	ew := errorWriter{}
+
+	err = db.Save(ew)
+	if err == nil {
+		t.Error(err)
+	}
+}
+
+func TestNewCollectionBasic(t *testing.T) {
 
 	card1 := "Black Lotus"
 	card2 := "Mox Pearl"

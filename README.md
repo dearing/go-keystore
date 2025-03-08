@@ -2,7 +2,7 @@
 
 A lightweight, in-memory key-value store for Go applications with type-safety through generics.
 
-## Features
+## features
 
 - Generic type support - store any type in your collections
 - Simple API for basic CRUD operations
@@ -12,13 +12,20 @@ A lightweight, in-memory key-value store for Go applications with type-safety th
 - Persistence with gob encoding
 - Time-based filtering for records
 
-## Installation
+## installation
 
 ```bash
 go get github.com/dearing/go-keystore
 ```
 
-## Usage
+## coverage
+
+```bash
+go test -coverprofile=coverage.out ./...
+go tool cover -html=coverage.out -o coverage.html
+```
+
+## usage
 
 ```go
 // Create a new string collection

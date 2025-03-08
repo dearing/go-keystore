@@ -5,6 +5,29 @@ import (
 	"regexp"
 )
 
+func (c *Collection[T]) String() string {
+	return fmt.Sprintf("Collection: %s", c.Description)
+}
+
+func (c *Collection[T]) MatchValues(pattern string) ([]T, error) {
+
+	var matches []T
+
+	regex, err := regexp.Compile(pattern)
+	if err != nil {
+		return nil, fmt.Errorf("error compiling regex: %w", err)
+	}
+
+	for key, record := range c.Keys {
+		if regex.MatchString(key) {
+			matches = append(matches, record.Value)
+		}
+	}
+
+	return matches, nil
+
+}
+
 func (c *Collection[T]) MatchKeys(pattern string) ([]string, error) {
 
 	var matches []string

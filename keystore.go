@@ -3,9 +3,8 @@ package keystore
 import (
 	"encoding/gob"
 	"fmt"
+	"io"
 	"log/slog"
-	"os"
-	"regexp"
 	"time"
 )
 
@@ -126,19 +125,11 @@ func (c *Collection[T]) Len() int {
 
 // Save the collection to a file
 //
-// ex: err := db.Save("db.gob")
-func (c *Collection[T]) Save(fileName string) error {
+// ex: err := db.Save(saveFile)
+func (c *Collection[T]) Save(w io.Writer) error {
 	slog.Info("Saving collection")
-
-	file, err := os.Create(fileName)
-	if err != nil {
-		return fmt.Errorf("error creating file: %w", err)
-	}
-
-	defer file.Close()
-
-	enc := gob.NewEncoder(file)
-	err = enc.Encode(c)
+	enc := gob.NewEncoder(w)
+	err := enc.Encode(c)
 	if err != nil {
 		return fmt.Errorf("error encoding collection: %w", err)
 	}
@@ -147,19 +138,11 @@ func (c *Collection[T]) Save(fileName string) error {
 
 // Load the collection from a file
 //
-// ex: err := db.Load("db.gob")
-func (c *Collection[T]) Load(fileName string) error {
+// ex: err := db.Load(saveFile)
+func (c *Collection[T]) Load(r io.Reader) error {
 	slog.Info("Loading collection")
-
-	file, err := os.Open(fileName)
-	if err != nil {
-		return fmt.Errorf("error opening file: %w", err)
-	}
-
-	defer file.Close()
-
-	dec := gob.NewDecoder(file)
-	err = dec.Decode(&c)
+	dec := gob.NewDecoder(r)
+	err := dec.Decode(&c)
 	if err != nil {
 		return fmt.Errorf("error decoding collection: %w", err)
 	}
@@ -170,11 +153,11 @@ func (c *Collection[T]) Load(fileName string) error {
 // CreatedSince returns all records created since a given time
 //
 // ex: records := db.CreatedSince(time.Now().Add(-24 * time.Hour))
-func (c *Collection[T]) CreatedSince(time time.Time) []Record[T] {
-	var records []Record[T]
+func (c *Collection[T]) CreatedSince(time time.Time) []T {
+	var records []T
 	for _, record := range c.Keys {
 		if record.CreatedAt.After(time) {
-			records = append(records, record)
+			records = append(records, record.Value)
 		}
 	}
 	return records
@@ -183,11 +166,11 @@ func (c *Collection[T]) CreatedSince(time time.Time) []Record[T] {
 // ModifiedSince returns all records modified since a given time
 //
 // ex: records := db.ModifiedSince(time.Now().Add(-24 * time.Hour))
-func (c *Collection[T]) ModifiedSince(time time.Time) []Record[T] {
-	var records []Record[T]
+func (c *Collection[T]) ModifiedSince(time time.Time) []T {
+	var records []T
 	for _, record := range c.Keys {
 		if record.ModifiedAt.After(time) {
-			records = append(records, record)
+			records = append(records, record.Value)
 		}
 	}
 	return records
@@ -196,35 +179,12 @@ func (c *Collection[T]) ModifiedSince(time time.Time) []Record[T] {
 // AccessedSince returns all records accessed since a given time
 //
 // ex: records := db.AccessedSince(time.Now().Add(-24 * time.Hour))
-func (c *Collection[T]) AccessedSince(time time.Time) []Record[T] {
-	var records []Record[T]
+func (c *Collection[T]) AccessedSince(time time.Time) []T {
+	var records []T
 	for _, record := range c.Keys {
 		if record.AccessedAt.After(time) {
-			records = append(records, record)
+			records = append(records, record.Value)
 		}
 	}
 	return records
-}
-
-func (c *Collection[T]) String() string {
-	return fmt.Sprintf("Collection: %s", c.Description)
-}
-
-func (c *Collection[T]) MatchValues(pattern string) ([]T, error) {
-
-	var matches []T
-
-	regex, err := regexp.Compile(pattern)
-	if err != nil {
-		return nil, fmt.Errorf("error compiling regex: %w", err)
-	}
-
-	for key, record := range c.Keys {
-		if regex.MatchString(key) {
-			matches = append(matches, record.Value)
-		}
-	}
-
-	return matches, nil
-
 }
