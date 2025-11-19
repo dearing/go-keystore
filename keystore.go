@@ -5,11 +5,13 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	"sync"
 	"time"
 )
 
 // Collection is a key-value store
 type Collection[T any] struct {
+	mu          sync.RWMutex
 	Keys        map[string]Record[T] // Keys is a map of keys to records
 	Description string               // Description is a human-readable description of the collection
 }
@@ -62,6 +64,9 @@ func (c *Collection[T]) String() string {
 //
 // ex: db.Set("Black Lotus", "Black Lotus")
 func (c *Collection[T]) Set(key string, value T) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
 	if record, exists := c.Keys[key]; exists {
 		record.Value = value
 		record.ModifiedAt = time.Now()
@@ -79,6 +84,9 @@ func (c *Collection[T]) Set(key string, value T) {
 // ex: record, ok := db.Read("Black Lotus")
 func (c *Collection[T]) Get(key string) (T, bool) {
 	//slog.Info("Reading value", "key", key)
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
 	if record, exists := c.Keys[key]; exists {
 		record.AccessedAt = time.Now()
 		record.Reads++
@@ -125,6 +133,9 @@ func (c *Collection[T]) Clear() {
 // ex: size := db.Len()
 func (c *Collection[T]) Len() int {
 	//slog.Info("Getting collection size", "len", len(c.Keys))
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+
 	return len(c.Keys)
 }
 
