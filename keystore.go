@@ -4,7 +4,6 @@ import (
 	"encoding/gob"
 	"fmt"
 	"io"
-	"log/slog"
 	"sync"
 	"time"
 )
@@ -45,7 +44,6 @@ func NewRecord[T any](value T) Record[T] {
 //
 // ex: db := NewCollection("my MTG cards")
 func NewCollection[T any](description string) Collection[T] {
-	//slog.Info("Creating new collection", "description", description)
 	return Collection[T]{
 		Keys:        make(map[string]Record[T]),
 		Description: description,
@@ -72,9 +70,7 @@ func (c *Collection[T]) Set(key string, value T) {
 		record.ModifiedAt = time.Now()
 		record.Writes++
 		c.Keys[key] = record
-		//slog.Info("Updating record", "value", value)
 	} else {
-		//slog.Info("Setting new record", "value", value)
 		c.Keys[key] = NewRecord(value)
 	}
 }
@@ -83,7 +79,6 @@ func (c *Collection[T]) Set(key string, value T) {
 //
 // ex: record, ok := db.Read("Black Lotus")
 func (c *Collection[T]) Get(key string) (T, bool) {
-	//slog.Info("Reading value", "key", key)
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
@@ -102,7 +97,9 @@ func (c *Collection[T]) Get(key string) (T, bool) {
 //
 // ex: record, ok := db.GetRecord("Black Lotus")
 func (c *Collection[T]) GetRecord(key string) (Record[T], bool) {
-	//slog.Info("Getting record", "key", key)
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
 	record, exists := c.Keys[key]
 	if exists {
 		record.AccessedAt = time.Now()
@@ -116,7 +113,9 @@ func (c *Collection[T]) GetRecord(key string) (Record[T], bool) {
 //
 // ex: db.Delete("Black Lotus")
 func (c *Collection[T]) Delete(key string) {
-	//slog.Info("Deleting record", "key", key)
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
 	delete(c.Keys, key)
 }
 
@@ -124,7 +123,9 @@ func (c *Collection[T]) Delete(key string) {
 //
 // ex: db.Clear()
 func (c *Collection[T]) Clear() {
-	//slog.Info("Clearing collection")
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
 	clear(c.Keys)
 }
 
@@ -132,7 +133,6 @@ func (c *Collection[T]) Clear() {
 //
 // ex: size := db.Len()
 func (c *Collection[T]) Len() int {
-	//slog.Info("Getting collection size", "len", len(c.Keys))
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 
@@ -143,7 +143,9 @@ func (c *Collection[T]) Len() int {
 //
 // ex: err := db.Save(saveFile)
 func (c *Collection[T]) Save(w io.Writer) error {
-	slog.Info("Saving collection")
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+
 	enc := gob.NewEncoder(w)
 	err := enc.Encode(c)
 	if err != nil {
@@ -156,7 +158,6 @@ func (c *Collection[T]) Save(w io.Writer) error {
 //
 // ex: err := db.Load(saveFile)
 func (c *Collection[T]) Load(r io.Reader) error {
-	slog.Info("Loading collection")
 	dec := gob.NewDecoder(r)
 	err := dec.Decode(&c)
 	if err != nil {
@@ -170,6 +171,9 @@ func (c *Collection[T]) Load(r io.Reader) error {
 //
 // ex: records := db.CreatedSince(time.Now().Add(-24 * time.Hour))
 func (c *Collection[T]) CreatedSince(time time.Time) []T {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+
 	var records []T
 	for _, record := range c.Keys {
 		if record.CreatedAt.After(time) {
@@ -183,6 +187,9 @@ func (c *Collection[T]) CreatedSince(time time.Time) []T {
 //
 // ex: records := db.ModifiedSince(time.Now().Add(-24 * time.Hour))
 func (c *Collection[T]) ModifiedSince(time time.Time) []T {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+
 	var records []T
 	for _, record := range c.Keys {
 		if record.ModifiedAt.After(time) {
@@ -196,6 +203,9 @@ func (c *Collection[T]) ModifiedSince(time time.Time) []T {
 //
 // ex: records := db.AccessedSince(time.Now().Add(-24 * time.Hour))
 func (c *Collection[T]) AccessedSince(time time.Time) []T {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+
 	var records []T
 	for _, record := range c.Keys {
 		if record.AccessedAt.After(time) {

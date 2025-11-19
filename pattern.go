@@ -11,13 +11,15 @@ import (
 //
 // ex: values, err := db.MatchValues("user:[0-9]")
 func (c *Collection[T]) MatchValues(pattern string) ([]T, error) {
-
 	var matches []T
 
 	regex, err := regexp.Compile(pattern)
 	if err != nil {
 		return nil, fmt.Errorf("error compiling regex: %w", err)
 	}
+
+	c.mu.RLock()
+	defer c.mu.RUnlock()
 
 	for key, record := range c.Keys {
 		if regex.MatchString(key) {
@@ -35,13 +37,15 @@ func (c *Collection[T]) MatchValues(pattern string) ([]T, error) {
 //
 // ex: keys, err := db.MatchKeys("user:[0-9]")
 func (c *Collection[T]) MatchKeys(pattern string) ([]string, error) {
-
 	var matches []string
 
 	regex, err := regexp.Compile(pattern)
 	if err != nil {
 		return nil, fmt.Errorf("error compiling regex: %w", err)
 	}
+
+	c.mu.RLock()
+	defer c.mu.RUnlock()
 
 	for key := range c.Keys {
 		if regex.MatchString(key) {
@@ -59,6 +63,8 @@ func (c *Collection[T]) MatchKeys(pattern string) ([]string, error) {
 //
 // ex: users, err := db.Prefix("user:*")
 func (c *Collection[T]) Prefix(prefix string) ([]string, error) {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
 
 	var matches []string
 
